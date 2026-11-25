@@ -600,6 +600,162 @@
             z-index: 10;
         }
 
+        /* 3D Scroll Reveal & Student Explorer */
+        .reveal-3d {
+            opacity: 0;
+            transform: perspective(1000px) rotateX(10deg) translateY(24px) scale(0.98);
+            transition: opacity 0.55s ease, transform 0.6s cubic-bezier(0.22, 1, 0.36, 1);
+            will-change: transform, opacity;
+        }
+
+        .reveal-3d.in-view {
+            opacity: 1;
+            transform: perspective(1000px) rotateX(0deg) translateY(0) scale(1);
+        }
+
+        .explorer-controls {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            align-items: center;
+            margin-bottom: 16px;
+        }
+
+        .explorer-controls input,
+        .explorer-controls select {
+            padding: 9px 12px;
+            border: 2px solid var(--border);
+            border-radius: 8px;
+            font-size: 14px;
+            background: white;
+            outline: none;
+        }
+
+        .explorer-controls input:focus,
+        .explorer-controls select:focus {
+            border-color: var(--primary);
+        }
+
+        .explorer-controls select { flex: 1; min-width: 220px; }
+
+        .coverflow-wrapper {
+            position: relative;
+            perspective: 1100px;
+            margin-bottom: 20px;
+        }
+
+        .coverflow-track {
+            display: flex;
+            gap: 14px;
+            overflow-x: auto;
+            scroll-snap-type: x mandatory;
+            padding: 18px 24px;
+            -webkit-overflow-scrolling: touch;
+            scrollbar-width: thin;
+        }
+
+        .coverflow-item {
+            flex: 0 0 210px;
+            scroll-snap-align: center;
+            background: linear-gradient(145deg, #ffffff, #f3f6fb);
+            border: 2px solid var(--border);
+            border-radius: 12px;
+            padding: 14px;
+            cursor: pointer;
+            transition: transform 0.28s ease, box-shadow 0.28s ease, border-color 0.28s ease;
+            transform-style: preserve-3d;
+            box-shadow: 0 6px 16px rgba(0,0,0,0.08);
+            user-select: none;
+        }
+
+        .coverflow-item:hover {
+            box-shadow: 0 12px 26px rgba(26,115,232,0.18);
+        }
+
+        .coverflow-item.active {
+            border-color: var(--primary);
+            background: linear-gradient(145deg, #eef5ff, #ffffff);
+            box-shadow: 0 14px 30px rgba(26,115,232,0.25);
+        }
+
+        .coverflow-prn {
+            font-weight: 700;
+            font-size: 14px;
+            color: var(--text);
+        }
+
+        .coverflow-name {
+            font-size: 12px;
+            color: var(--text-secondary);
+            margin: 4px 0 8px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        /* 3D Flip Detail Card */
+        .flip-scene {
+            perspective: 1400px;
+        }
+
+        .flip-card {
+            position: relative;
+            width: 100%;
+            transform-style: preserve-3d;
+            transition: transform 0.7s cubic-bezier(0.22, 1, 0.36, 1);
+        }
+
+        .flip-card.flipped {
+            transform: rotateY(180deg);
+        }
+
+        .flip-face {
+            backface-visibility: hidden;
+            -webkit-backface-visibility: hidden;
+            background: #ffffff;
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 20px;
+            box-shadow: 0 10px 28px rgba(0,0,0,0.08);
+        }
+
+        .flip-face-back {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            min-height: 100%;
+            transform: rotateY(180deg);
+            background: linear-gradient(160deg, #fafcff 0%, #ffffff 100%);
+        }
+
+        .student-card-header {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: space-between;
+            align-items: center;
+            gap: 12px;
+            padding-bottom: 14px;
+            border-bottom: 1px solid var(--border);
+            margin-bottom: 16px;
+        }
+
+        .clickable-row {
+            cursor: pointer;
+        }
+
+        .clickable-row:hover {
+            background: #eef5ff !important;
+        }
+
+        @media (prefers-reduced-motion: reduce) {
+            .reveal-3d, .flip-card, .coverflow-item {
+                transition: none !important;
+                transform: none !important;
+                opacity: 1 !important;
+            }
+        }
+
         @media (max-width: 768px) {
             .header { padding: 16px 0; }
             .header-content { padding: 0 16px; gap: 12px; }
@@ -751,6 +907,9 @@
                 <div class="tab" data-tab="allStudents" onclick="switchTab(this)">
                     <i class="fas fa-users"></i> All Students
                 </div>
+                <div class="tab" data-tab="studentExplorer" onclick="switchTab(this)">
+                    <i class="fas fa-cube"></i> Student Details (3D)
+                </div>
             </div>
 
             <div class="export-row">
@@ -806,6 +965,30 @@
                         <tbody id="allTableBody"></tbody>
                     </table>
                 </div>
+            </div>
+
+            <!-- Individual Student Details (3D Scroll & Flip) Tab -->
+            <div class="tab-content" id="tab-studentExplorer">
+                <div class="explorer-controls">
+                    <button class="btn btn-secondary btn-sm" onclick="stepStudent(-1)">
+                        <i class="fas fa-chevron-left"></i> Prev
+                    </button>
+                    <select id="studentSelectDropdown" onchange="selectStudentByPrn(this.value)">
+                        <option value="">--- Select a Student ---</option>
+                    </select>
+                    <button class="btn btn-secondary btn-sm" onclick="stepStudent(1)">
+                        Next <i class="fas fa-chevron-right"></i>
+                    </button>
+                    <button class="btn btn-primary btn-sm" id="flipCardBtn" onclick="toggleStudentCardFlip()">
+                        <i class="fas fa-sync-alt"></i> Flip Card (3D)
+                    </button>
+                </div>
+
+                <div class="coverflow-wrapper">
+                    <div class="coverflow-track" id="coverflowTrack" onscroll="updateCoverflow3D()"></div>
+                </div>
+
+                <div class="flip-scene" id="studentDetailScene"></div>
             </div>
         </div>
     </div>
@@ -1191,7 +1374,7 @@
                 }
 
                 return `
-                    <tr>
+                    <tr class="clickable-row" title="Click to view full 3D marklist" onclick="openStudentExplorer('${s.prn}')">
                         <td>${i + 1}</td>
                         <td><strong>${s.prn}</strong></td>
                         <td>${escapeHtml(s.name || '-')}</td>
@@ -1220,7 +1403,7 @@
                     }
                 }
                 return `
-                    <tr>
+                    <tr class="clickable-row" title="Click to view full 3D marklist" onclick="openStudentExplorer('${s.prn}')">
                         <td>${i + 1}</td>
                         <td><strong>${s.prn}</strong></td>
                         <td>${escapeHtml(s.name || '-')}</td>
@@ -1234,9 +1417,234 @@
             allBody.innerHTML = '<tr><td colspan="6" style="text-align:center; padding:40px; color:var(--text-secondary);">No results found</td></tr>';
         }
 
+        // Populate 3D Student Explorer
+        initStudentExplorer(analysis);
+        init3DScrollReveal();
+
         // Scroll to results
         resultsSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
     }
+
+    let selectedStudentPrn = null;
+    let isCardFlipped = false;
+
+    function initStudentExplorer(analysis) {
+        const students = analysis.all_students || [];
+        const dropdown = document.getElementById('studentSelectDropdown');
+        const track = document.getElementById('coverflowTrack');
+        const scene = document.getElementById('studentDetailScene');
+
+        if (!students.length) {
+            dropdown.innerHTML = '<option value="">No students found</option>';
+            track.innerHTML = '';
+            scene.innerHTML = '<p style="text-align:center; padding:32px; color:var(--text-secondary);">No student results to display.</p>';
+            return;
+        }
+
+        dropdown.innerHTML = students.map(s =>
+            `<option value="${s.prn}">${s.prn}${s.name ? ' — ' + escapeHtml(s.name) : ''} (${s.failed_subjects.length} failed)</option>`
+        ).join('');
+
+        track.innerHTML = students.map(s => {
+            let badge = '<span class="badge badge-pass">PASS</span>';
+            if (s.failed_subjects.length > 0) {
+                badge = (analysis.upcoming_checked && s.all_cleared)
+                    ? '<span class="badge badge-cleared">CLEARED</span>'
+                    : `<span class="badge badge-fail">${s.failed_subjects.length} FAILED</span>`;
+            }
+            return `
+                <div class="coverflow-item" data-prn="${s.prn}" onclick="selectStudentByPrn('${s.prn}')">
+                    <div class="coverflow-prn">${s.prn}</div>
+                    <div class="coverflow-name" title="${escapeHtml(s.name || 'N/A')}">${escapeHtml(s.name || 'N/A')}</div>
+                    <div>${badge}</div>
+                </div>
+            `;
+        }).join('');
+
+        if (!selectedStudentPrn || !students.some(s => s.prn === selectedStudentPrn)) {
+            selectedStudentPrn = students[0].prn;
+        }
+        selectStudentByPrn(selectedStudentPrn);
+    }
+
+    function openStudentExplorer(prn) {
+        const tabEl = document.querySelector('.tab[data-tab="studentExplorer"]');
+        if (tabEl) switchTab(tabEl);
+        selectStudentByPrn(prn);
+        document.getElementById('tab-studentExplorer').scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+
+    function selectStudentByPrn(prn) {
+        if (!currentAnalysis || !currentAnalysis.all_students) return;
+        const student = currentAnalysis.all_students.find(s => s.prn === prn);
+        if (!student) return;
+
+        selectedStudentPrn = prn;
+        isCardFlipped = false;
+        document.getElementById('studentSelectDropdown').value = prn;
+
+        const items = document.querySelectorAll('.coverflow-item');
+        items.forEach(el => {
+            const active = el.dataset.prn === prn;
+            el.classList.toggle('active', active);
+            if (active) {
+                el.scrollIntoView({ behavior: 'smooth', inline: 'center', block: 'nearest' });
+            }
+        });
+
+        setTimeout(updateCoverflow3D, 80);
+        renderStudentDetailCard(student);
+    }
+
+    function stepStudent(delta) {
+        if (!currentAnalysis || !currentAnalysis.all_students || !currentAnalysis.all_students.length) return;
+        const students = currentAnalysis.all_students;
+        const idx = students.findIndex(s => s.prn === selectedStudentPrn);
+        const nextIdx = (idx === -1) ? 0 : Math.max(0, Math.min(students.length - 1, idx + delta));
+        selectStudentByPrn(students[nextIdx].prn);
+    }
+
+    function updateCoverflow3D() {
+        const track = document.getElementById('coverflowTrack');
+        if (!track) return;
+        const trackRect = track.getBoundingClientRect();
+        const centerX = trackRect.left + trackRect.width / 2;
+
+        track.querySelectorAll('.coverflow-item').forEach(item => {
+            const rect = item.getBoundingClientRect();
+            const itemCenter = rect.left + rect.width / 2;
+            const offset = (itemCenter - centerX) / (trackRect.width / 2 || 1);
+            const clamped = Math.max(-1.2, Math.min(1.2, offset));
+            const rotateY = -clamped * 28;
+            const scale = 1 - Math.min(0.18, Math.abs(clamped) * 0.14);
+            const translateZ = (1 - Math.abs(clamped)) * 28;
+            item.style.transform = `rotateY(${rotateY.toFixed(1)}deg) scale(${scale.toFixed(3)}) translateZ(${translateZ.toFixed(1)}px)`;
+        });
+    }
+
+    function toggleStudentCardFlip() {
+        const card = document.getElementById('studentFlipCard');
+        if (!card) return;
+        isCardFlipped = !isCardFlipped;
+        card.classList.toggle('flipped', isCardFlipped);
+    }
+
+    function renderStudentDetailCard(s) {
+        const scene = document.getElementById('studentDetailScene');
+        const subjects = s.subjects || [];
+        const passedCount = subjects.filter(sub => !sub.failed).length;
+        const failedCount = subjects.filter(sub => sub.failed).length;
+
+        const subjectRows = subjects.length
+            ? subjects.map((sub, idx) => `
+                <tr>
+                    <td>${idx + 1}</td>
+                    <td>${escapeHtml(sub.code || '-')}</td>
+                    <td><strong>${escapeHtml(sub.name || '-')}</strong></td>
+                    <td>${escapeHtml(sub.external || '-')}</td>
+                    <td>${escapeHtml(sub.internal || '-')}</td>
+                    <td>${escapeHtml(sub.total || '-')}</td>
+                    <td>${escapeHtml(sub.grade || '-')}</td>
+                    <td>${sub.failed ? '<span class="badge badge-fail">FAIL</span>' : '<span class="badge badge-pass">PASS</span>'}</td>
+                </tr>
+            `).join('')
+            : '<tr><td colspan="8" style="text-align:center; padding:24px; color:var(--text-secondary);">No subject breakdown available.</td></tr>';
+
+        let backHtml = '';
+        if (s.failed_subjects.length === 0) {
+            backHtml = '<p style="text-align:center; padding:36px; color:var(--success); font-weight:600;"><i class="fas fa-check-circle" style="font-size:36px; display:block; margin-bottom:10px;"></i>All papers passed on the first attempt!</p>';
+        } else if (currentAnalysis.upcoming_checked && s.paper_statuses) {
+            backHtml = s.paper_statuses.map(p => {
+                const attemptsHtml = (p.attempts || []).length
+                    ? p.attempts.map(a => `<div style="font-size:12px; margin-top:4px; color:var(--text-secondary);">&bull; ${escapeHtml(a.exam_name)}: <strong>${a.failed ? 'Failed' : 'Passed'}</strong>${a.grade ? ' (Grade: ' + escapeHtml(a.grade) + ')' : ''}</div>`).join('')
+                    : '<div style="font-size:12px; margin-top:4px; color:var(--text-secondary);">No subsequent attempt found in checked upcoming exams.</div>';
+                return `
+                    <div style="padding:12px; border:1px solid var(--border); border-radius:8px; margin-bottom:10px; background:#fff;">
+                        <div style="display:flex; justify-content:space-between; align-items:center; gap:8px; flex-wrap:wrap;">
+                            <strong>${escapeHtml(p.subject)}</strong>
+                            ${p.cleared
+                                ? `<span class="badge badge-pass">Passed in ${escapeHtml(p.cleared_in || 'Upcoming')}</span>`
+                                : '<span class="badge badge-fail">Still Failed</span>'}
+                        </div>
+                        ${attemptsHtml}
+                    </div>
+                `;
+            }).join('');
+        } else {
+            backHtml = '<p style="text-align:center; padding:36px; color:var(--text-secondary);">Upcoming exams have not been checked yet. Click <strong>Check Upcoming Exams for Failed Students</strong> above to see if these papers were cleared later.</p>';
+        }
+
+        scene.innerHTML = `
+            <div class="flip-card ${isCardFlipped ? 'flipped' : ''}" id="studentFlipCard">
+                <div class="flip-face flip-face-front">
+                    <div class="student-card-header">
+                        <div>
+                            <div style="font-size:12px; color:var(--text-secondary); text-transform:uppercase; font-weight:600;">Individual Marklist</div>
+                            <h3 style="font-size:20px; margin-top:2px;">${escapeHtml(s.name || 'Student')} <span style="color:var(--primary); font-size:15px;">(${s.prn})</span></h3>
+                        </div>
+                        <div style="display:flex; gap:8px; flex-wrap:wrap;">
+                            <span class="badge badge-na">${subjects.length} Subjects</span>
+                            <span class="badge badge-pass">${passedCount} Passed</span>
+                            ${failedCount > 0 ? `<span class="badge badge-fail">${failedCount} Failed</span>` : ''}
+                        </div>
+                    </div>
+                    <div class="table-container">
+                        <table class="data-table">
+                            <thead>
+                                <tr>
+                                    <th>#</th>
+                                    <th>Code</th>
+                                    <th>Subject</th>
+                                    <th>External</th>
+                                    <th>Internal</th>
+                                    <th>Total</th>
+                                    <th>Grade</th>
+                                    <th>Result</th>
+                                </tr>
+                            </thead>
+                            <tbody>${subjectRows}</tbody>
+                        </table>
+                    </div>
+                </div>
+                <div class="flip-face flip-face-back">
+                    <div class="student-card-header">
+                        <div>
+                            <div style="font-size:12px; color:var(--text-secondary); text-transform:uppercase; font-weight:600;">Upcoming Examination History</div>
+                            <h3 style="font-size:20px; margin-top:2px;">${escapeHtml(s.name || 'Student')} <span style="color:var(--primary); font-size:15px;">(${s.prn})</span></h3>
+                        </div>
+                        <button class="btn btn-secondary btn-sm" onclick="toggleStudentCardFlip()">
+                            <i class="fas fa-undo"></i> Back to Marklist
+                        </button>
+                    </div>
+                    ${backHtml}
+                </div>
+            </div>
+        `;
+    }
+
+    function init3DScrollReveal() {
+        const targets = document.querySelectorAll('.card, .stat-card, .bar-row');
+        targets.forEach(el => el.classList.add('reveal-3d'));
+
+        if (!('IntersectionObserver' in window)) {
+            targets.forEach(el => el.classList.add('in-view'));
+            return;
+        }
+
+        const observer = new IntersectionObserver((entries) => {
+            entries.forEach(entry => {
+                if (entry.isIntersecting) {
+                    entry.target.classList.add('in-view');
+                }
+            });
+        }, { threshold: 0.08 });
+
+        targets.forEach(el => observer.observe(el));
+    }
+
+    window.addEventListener('DOMContentLoaded', () => {
+        init3DScrollReveal();
+    });
 
     function switchTab(el) {
         document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
