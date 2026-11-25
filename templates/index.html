@@ -1511,8 +1511,14 @@
                     examSelect.appendChild(opt);
                 });
                 onExamChange();
+            } else {
+                const courseSelect = document.getElementById('courseSelect');
+                courseSelect.innerHTML = '<option value="">--- MGU Portal Unreachable (Refresh to Retry) ---</option>';
+                showToast('MGU Pareeksha portal is currently unreachable. Please retry in a moment.');
             }
         } catch (err) {
+            const courseSelect = document.getElementById('courseSelect');
+            courseSelect.innerHTML = '<option value="">--- Failed to Load Courses ---</option>';
             showToast('Failed to load options: ' + err.message);
         }
     }

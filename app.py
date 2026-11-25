@@ -20,13 +20,52 @@ urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 app = Flask(__name__)
 
 BASE_URL = "https://pareeksha.mgu.ac.in/Pareeksha/index.php/Public/PareekshaResultView_ctrl/index"
+OPTIONS_CACHE_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "options_cache.json")
+_OPTIONS_CACHE = {}
+
+
+def _load_disk_cache():
+    if os.path.exists(OPTIONS_CACHE_FILE):
+        try:
+            with open(OPTIONS_CACHE_FILE, 'r', encoding='utf-8') as f:
+                return json.load(f)
+        except Exception:
+            return {}
+    return {}
+
+
+def _save_disk_cache(cache_dict):
+    try:
+        with open(OPTIONS_CACHE_FILE, 'w', encoding='utf-8') as f:
+            json.dump(cache_dict, f)
+    except Exception:
+        pass
 
 
 def get_courses_and_exams(project_id, cs_id):
-    """Fetch available courses and exams from the Pareeksha portal."""
+    """Fetch available courses and exams from the Pareeksha portal (with retry & cache fallback)."""
     url = f"{BASE_URL}/{project_id}/{cs_id}"
     session = requests.Session()
-    resp = session.get(url, timeout=20, verify=False)
+    last_err = None
+    resp = None
+
+    for attempt in range(2):
+        try:
+            resp = session.get(url, timeout=15, verify=False)
+            resp.raise_for_status()
+            break
+        except Exception as e:
+            last_err = e
+            if attempt == 0:
+                time.sleep(0.8)
+
+    if resp is None:
+        cache_key = f"{project_id}:{cs_id}"
+        cached = _OPTIONS_CACHE.get(cache_key) or _load_disk_cache().get(cache_key)
+        if cached:
+            return cached['courses'], cached['exams']
+        raise last_err
+
     soup = BeautifulSoup(resp.text, 'lxml')
 
     courses = []
@@ -49,6 +88,13 @@ def get_courses_and_exams(project_id, cs_id):
                     'value': opt['value'],
                     'text': opt.text.strip()
                 })
+
+    if courses or exams:
+        cache_key = f"{project_id}:{cs_id}"
+        _OPTIONS_CACHE[cache_key] = {'courses': courses, 'exams': exams}
+        disk = _load_disk_cache()
+        disk[cache_key] = {'courses': courses, 'exams': exams}
+        _save_disk_cache(disk)
 
     return courses, exams
 
