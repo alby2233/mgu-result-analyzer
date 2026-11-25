@@ -1246,6 +1246,9 @@
             <button class="btn btn-primary" id="analyzeBtn" onclick="startAnalysis()">
                 <i class="fas fa-search"></i> Analyze Results
             </button>
+            <button class="btn btn-primary" id="analyzeAllSemBtn" onclick="startAllSemestersAnalysis()" style="background: linear-gradient(135deg, #512da8, #1a73e8);">
+                <i class="fas fa-layer-group"></i> Check All Semesters
+            </button>
             <button class="btn btn-secondary" onclick="testSinglePRN()">
                 <i class="fas fa-vial"></i> Test Single PRN
             </button>
@@ -1401,6 +1404,50 @@
                 </div>
 
                 <div class="flip-scene" id="studentDetailScene"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- All Semesters Course Results Section -->
+    <div class="results-section" id="allSemestersSection">
+        <div class="stats-grid" id="allSemStatsGrid"></div>
+
+        <div class="card">
+            <div class="card-title" style="justify-content:space-between; flex-wrap:wrap;">
+                <span><i class="fas fa-layer-group"></i> Semester-by-Semester Breakdown</span>
+                <button class="btn btn-secondary btn-sm" onclick="exportAllSemestersCSV()">
+                    <i class="fas fa-file-csv"></i> Export All-Semester CSV
+                </button>
+            </div>
+            <div id="semesterCardsGrid" style="display:grid; grid-template-columns:repeat(auto-fit, minmax(290px, 1fr)); gap:16px;"></div>
+        </div>
+
+        <div class="card">
+            <div class="card-title"><i class="fas fa-user-graduate"></i> Student Course-Wide Transcript (All Semesters)</div>
+            <div class="filter-bar">
+                <input type="text" id="allSemSearchInput" placeholder="Search by PRN or Name..." oninput="filterAllSemStudents()">
+                <div class="filter-pills">
+                    <button class="filter-pill active" onclick="setAllSemFilter('all', this)">All</button>
+                    <button class="filter-pill" onclick="setAllSemFilter('clear', this)">All Clear</button>
+                    <button class="filter-pill" onclick="setAllSemFilter('pending', this)">Has Backlogs</button>
+                </div>
+            </div>
+            <div class="table-container">
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th>#</th>
+                            <th>PRN</th>
+                            <th>Name</th>
+                            <th>Semesters</th>
+                            <th>Initial Failed</th>
+                            <th>Cleared Later</th>
+                            <th>Still Pending</th>
+                            <th>Status</th>
+                        </tr>
+                    </thead>
+                    <tbody id="allSemStudentsBody"></tbody>
+                </table>
             </div>
         </div>
     </div>
@@ -2503,6 +2550,246 @@
         } catch (e) {}
         initPointer3DTilt();
     });
+
+    let currentCourseAnalysis = null;
+    let allSemFilterMode = 'all';
+
+    async function startAllSemestersAnalysis() {
+        const prnStart = document.getElementById('prnStart').value;
+        const prnEnd = document.getElementById('prnEnd').value;
+        const delay = document.getElementById('delayInput').value;
+        const checkUpcoming = document.getElementById('checkUpcomingCheckbox').checked;
+
+        if (!currentCsId) return showToast('Please select a course');
+        if (!prnStart || prnStart.length !== 12) return showToast('Start PRN must be 12 digits');
+        if (!prnEnd || prnEnd.length !== 12) return showToast('End PRN must be 12 digits');
+        if (parseInt(prnStart) > parseInt(prnEnd)) return showToast('Start PRN must be ≤ End PRN');
+
+        const total = parseInt(prnEnd) - parseInt(prnStart) + 1;
+        if (total > 100) return showToast('All-Semester scan supports up to 100 PRNs at a time');
+
+        try {
+            localStorage.setItem('mgu_prn_start', prnStart);
+            localStorage.setItem('mgu_prn_end', prnEnd);
+        } catch (e) {}
+
+        const btn = document.getElementById('analyzeAllSemBtn');
+        btn.disabled = true;
+        btn.innerHTML = '<span class="spinner"></span> Scanning All Semesters...';
+
+        const progressSection = document.getElementById('progressSection');
+        progressSection.classList.add('active');
+        document.getElementById('progressBar').style.width = '5%';
+        document.getElementById('progressCount').textContent = `Scanning all semesters for ${total} student(s)...`;
+        document.getElementById('progressPercent').textContent = '...';
+        document.getElementById('liveLog').innerHTML = '';
+
+        addLog(`Starting All-Semester scan for ${total} student(s) (PRN ${prnStart} to ${prnEnd})...`, 'info');
+
+        let simProgress = 5;
+        const simInterval = setInterval(() => {
+            simProgress = Math.min(simProgress + (90 / Math.max(1, total * 2)), 92);
+            document.getElementById('progressBar').style.width = Math.round(simProgress) + '%';
+            document.getElementById('progressPercent').textContent = Math.round(simProgress) + '%';
+        }, 700);
+
+        try {
+            const resp = await fetch('/api/analyze_all_semesters', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    project_id: PROJECT_ID,
+                    cs_id: currentCsId,
+                    prn_start: prnStart,
+                    prn_end: prnEnd,
+                    delay: Math.min(0.25, parseFloat(delay) || 0.1),
+                    check_upcoming: checkUpcoming
+                })
+            });
+            const data = await resp.json();
+            clearInterval(simInterval);
+            document.getElementById('progressBar').style.width = '100%';
+            document.getElementById('progressPercent').textContent = '100%';
+
+            if (data.success) {
+                currentCourseAnalysis = data.course_analysis;
+                const ov = data.course_analysis.overall;
+                addLog(`All-Semester scan complete! Found ${ov.students_found} student(s) across ${ov.semesters_with_results} semester(s).`, 'success');
+                addLog(`All Clear: ${ov.students_all_clear}, With Pending Backlogs: ${ov.students_with_pending}`, ov.students_with_pending > 0 ? 'warn' : 'success');
+                renderAllSemestersResults(data.course_analysis);
+            } else {
+                addLog('Error: ' + data.error, 'fail');
+                showToast('Error: ' + data.error);
+            }
+        } catch (err) {
+            clearInterval(simInterval);
+            addLog('Request failed: ' + err.message, 'fail');
+            showToast('Request failed: ' + err.message);
+        }
+
+        btn.disabled = false;
+        btn.innerHTML = '<i class="fas fa-layer-group"></i> Check All Semesters';
+    }
+
+    function renderAllSemestersResults(ca) {
+        const section = document.getElementById('allSemestersSection');
+        section.classList.add('active');
+        const ov = ca.overall;
+
+        document.getElementById('allSemStatsGrid').innerHTML = `
+            <div class="stat-card"><div class="stat-value">${ov.total_prns_checked}</div><div class="stat-label">PRNs Checked</div></div>
+            <div class="stat-card"><div class="stat-value">${ov.students_found}</div><div class="stat-label">Students Found</div></div>
+            <div class="stat-card"><div class="stat-value">${ov.semesters_with_results}</div><div class="stat-label">Semesters Found</div></div>
+            <div class="stat-card success"><div class="stat-value">${ov.students_all_clear}</div><div class="stat-label">All-Clear Students</div></div>
+            <div class="stat-card danger"><div class="stat-value">${ov.students_with_pending}</div><div class="stat-label">Students with Backlogs</div></div>
+            <div class="stat-card warning"><div class="stat-value">${ov.total_pending_papers}</div><div class="stat-label">Total Pending Papers</div></div>
+        `;
+        initPointer3DTilt();
+
+        const semGrid = document.getElementById('semesterCardsGrid');
+        if (ca.semesters && ca.semesters.length > 0) {
+            semGrid.innerHTML = ca.semesters.map(sem => {
+                const subList = (sem.subject_failures_sorted || []).slice(0, 6).map(([name, info]) =>
+                    `<div style="display:flex; justify-content:space-between; font-size:12px; padding:4px 0; border-bottom:1px dashed var(--border);">
+                        <span style="overflow:hidden; text-overflow:ellipsis; white-space:nowrap; max-width:68%;" title="${escapeHtml(name)}">${escapeHtml(name)}</span>
+                        <span><strong>${info.count}</strong> fail (${info.still_failed} pending)</span>
+                    </div>`
+                ).join('') || '<p style="font-size:12px; color:var(--success); margin-top:8px;"><i class="fas fa-check-circle"></i> No failures in this semester!</p>';
+
+                return `
+                    <div style="border:1px solid var(--border); border-radius:12px; padding:16px; background:var(--surface);">
+                        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
+                            <h4 style="font-size:16px; color:var(--primary);">${escapeHtml(sem.semester_label)}</h4>
+                            <span class="badge badge-na">${sem.results_found} Students</span>
+                        </div>
+                        <div style="display:flex; gap:6px; flex-wrap:wrap; margin-bottom:10px;">
+                            <span class="badge badge-fail">${sem.initial_failures} Initial Fail</span>
+                            <span class="badge badge-cleared">${sem.cleared_all} Cleared All</span>
+                            <span class="badge ${sem.still_failed > 0 ? 'badge-fail' : 'badge-pass'}">${sem.still_failed} Still Pending</span>
+                        </div>
+                        <div>${subList}</div>
+                    </div>
+                `;
+            }).join('');
+        } else {
+            semGrid.innerHTML = '<p style="color:var(--text-secondary);">No semester results found for this PRN range.</p>';
+        }
+
+        renderAllSemStudentsTable(ca.students || []);
+        init3DScrollReveal();
+        if (ov.students_found > 0 && ov.students_with_pending === 0) launchConfetti();
+        section.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+
+    function renderAllSemStudentsTable(students) {
+        const tbody = document.getElementById('allSemStudentsBody');
+        if (!students.length) {
+            tbody.innerHTML = '<tr><td colspan="8" style="text-align:center; padding:30px; color:var(--text-secondary);">No matching students found.</td></tr>';
+            return;
+        }
+        tbody.innerHTML = students.map((s, idx) => {
+            const statusBadge = s.total_still_failed === 0
+                ? (s.total_failed_initial > 0 ? '<span class="badge badge-cleared">ALL CLEARED</span>' : '<span class="badge badge-pass">ALL PASS</span>')
+                : `<span class="badge badge-fail">${s.total_still_failed} BACKLOG${s.total_still_failed > 1 ? 'S' : ''}</span>`;
+            return `
+                <tr class="clickable-row" title="Click to view full multi-semester transcript" onclick="openFullCourseTranscript('${s.prn}')">
+                    <td>${idx + 1}</td>
+                    <td><strong>${s.prn}</strong></td>
+                    <td>${escapeHtml(s.name || '-')}</td>
+                    <td>${s.semesters_appeared}</td>
+                    <td>${s.total_failed_initial}</td>
+                    <td>${s.total_cleared}</td>
+                    <td>${s.total_still_failed}</td>
+                    <td>${statusBadge}</td>
+                </tr>
+            `;
+        }).join('');
+    }
+
+    function setAllSemFilter(mode, btn) {
+        allSemFilterMode = mode;
+        btn.parentElement.querySelectorAll('.filter-pill').forEach(p => p.classList.remove('active'));
+        btn.classList.add('active');
+        filterAllSemStudents();
+    }
+
+    function filterAllSemStudents() {
+        if (!currentCourseAnalysis) return;
+        const q = (document.getElementById('allSemSearchInput')?.value || '').toLowerCase().trim();
+        let list = [...(currentCourseAnalysis.students || [])];
+        if (allSemFilterMode === 'clear') list = list.filter(s => s.total_still_failed === 0);
+        else if (allSemFilterMode === 'pending') list = list.filter(s => s.total_still_failed > 0);
+        if (q) list = list.filter(s => s.prn.toLowerCase().includes(q) || (s.name || '').toLowerCase().includes(q));
+        renderAllSemStudentsTable(list);
+    }
+
+    function openFullCourseTranscript(prn) {
+        if (!currentCourseAnalysis) return;
+        const stu = (currentCourseAnalysis.students || []).find(s => s.prn === prn);
+        if (!stu) return;
+
+        const modal = document.getElementById('testModal');
+        modal.querySelector('.modal-header h3').innerHTML = `<i class="fas fa-user-graduate"></i> ${escapeHtml(stu.name || 'Student')} (${stu.prn}) — All Semesters`;
+
+        const semKeys = Object.keys(stu.semester_results || {}).sort((a, b) => Number(a) - Number(b));
+        const html = semKeys.map(sk => {
+            const sr = stu.semester_results[sk];
+            const paperMap = {};
+            (sr.paper_statuses || []).forEach(p => { paperMap[p.subject] = p; });
+            const rows = (sr.subjects || []).map(sub => {
+                const ps = sub.failed ? paperMap[sub.name] : null;
+                const cleared = Boolean(ps && ps.cleared);
+                const ext = cleared && ps.new_external ? ps.new_external : (sub.external || '-');
+                const intl = cleared && ps.new_internal ? ps.new_internal : (sub.internal || '-');
+                const tot = cleared && ps.new_total ? ps.new_total : (sub.total || '-');
+                const grd = cleared && ps.new_grade ? ps.new_grade : (sub.grade || '-');
+                const badge = !sub.failed
+                    ? '<span class="badge badge-pass">PASS</span>'
+                    : (cleared ? `<span class="badge badge-cleared" title="${escapeHtml(ps.cleared_in || '')}">CLEARED</span>` : '<span class="badge badge-fail">FAIL</span>');
+                return `<tr>
+                    <td>${escapeHtml(sub.code || '-')}</td>
+                    <td><strong>${escapeHtml(sub.name || '-')}</strong>${cleared ? `<div style="font-size:11px; color:var(--primary);">${escapeHtml(ps.cleared_in || '')}</div>` : ''}</td>
+                    <td>${escapeHtml(ext)}</td>
+                    <td>${escapeHtml(intl)}</td>
+                    <td>${escapeHtml(tot)}</td>
+                    <td>${escapeHtml(grd)}</td>
+                    <td>${badge}</td>
+                </tr>`;
+            }).join('');
+
+            return `
+                <div style="margin-bottom:18px;">
+                    <h4 style="margin-bottom:8px; color:var(--primary);">Semester ${sk === '999' ? 'Other' : sk} <span style="font-size:12px; color:var(--text-secondary); font-weight:400;">(${escapeHtml(sr.exam_name)})</span></h4>
+                    <div class="table-container">
+                        <table class="data-table">
+                            <thead><tr><th>Code</th><th>Subject</th><th>Ext</th><th>Int</th><th>Total</th><th>Grade</th><th>Result</th></tr></thead>
+                            <tbody>${rows}</tbody>
+                        </table>
+                    </div>
+                </div>
+            `;
+        }).join('');
+
+        document.getElementById('testModalBody').innerHTML = html || '<p>No semester records found.</p>';
+        modal.classList.add('active');
+    }
+
+    function exportAllSemestersCSV() {
+        if (!currentCourseAnalysis) return showToast('No all-semester results to export');
+        let csv = 'PRN,Name,Semesters Appeared,Initial Failed,Cleared Later,Still Pending,Status\n';
+        (currentCourseAnalysis.students || []).forEach(s => {
+            const status = s.total_still_failed === 0 ? (s.total_failed_initial > 0 ? 'ALL CLEARED' : 'ALL PASS') : 'HAS BACKLOGS';
+            csv += `"${s.prn}","${s.name}",${s.semesters_appeared},${s.total_failed_initial},${s.total_cleared},${s.total_still_failed},"${status}"\n`;
+        });
+        const blob = new Blob([csv], { type: 'text/csv' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `mgu_all_semesters_${new Date().toISOString().slice(0, 10)}.csv`;
+        a.click();
+        URL.revokeObjectURL(url);
+        showToast('All-Semester CSV exported!');
+    }
 
     // Close modal on overlay click
     document.getElementById('testModal').addEventListener('click', function(e) {

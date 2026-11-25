@@ -731,6 +731,229 @@ def check_upcoming():
     return jsonify({'success': True, 'analysis': analysis})
 
 
+def group_exams_by_semester(exams):
+    """Group a course's exams by canonical semester number (1..10)."""
+    grouped = defaultdict(list)
+    for ex in exams:
+        sem_num = extract_semester_number(ex.get('text', ''))
+        key = sem_num if sem_num is not None else 999
+        grouped[key].append(ex)
+    return dict(sorted(grouped.items(), key=lambda x: x[0]))
+
+
+def _scan_prn_all_semesters(url, cs_id, prn, sem_groups, delay=0.1, check_upcoming=True):
+    """Fetch all semester results (and upcoming clearances) for a single PRN."""
+    session = requests.Session()
+    session.get(url, timeout=20, verify=False)
+
+    student_name = ''
+    semester_results = {}
+
+    for sem_num, sem_exams in sem_groups.items():
+        initial_res = None
+        initial_idx = None
+
+        for idx, exam in enumerate(sem_exams):
+            res = fetch_result(session, url, cs_id, exam['value'], prn)
+            if delay > 0:
+                time.sleep(delay)
+            if res.get('status') == 'found' and res.get('subjects'):
+                initial_res = res
+                initial_idx = idx
+                if not student_name and res.get('name'):
+                    student_name = res['name']
+                break
+
+        if not initial_res:
+            continue
+
+        failed_subjects = [s.get('name', 'Unknown') for s in initial_res['subjects'] if s.get('failed')]
+        sem_entry = {
+            'semester': sem_num,
+            'exam_id': sem_exams[initial_idx]['value'],
+            'exam_name': sem_exams[initial_idx]['text'],
+            'subjects': initial_res['subjects'],
+            'failed_subjects': failed_subjects,
+            'paper_statuses': [],
+            'still_failed_subjects': list(failed_subjects),
+            'all_cleared': len(failed_subjects) == 0,
+        }
+
+        if check_upcoming and failed_subjects and initial_idx + 1 < len(sem_exams):
+            remaining_exams = sem_exams[initial_idx + 1:]
+            tracking = check_upcoming_for_failed_students(
+                session, url, cs_id,
+                [{'prn': prn, 'failed_subjects': failed_subjects}],
+                remaining_exams, delay
+            )
+            papers = tracking.get(prn, {})
+            paper_statuses = []
+            still_failed = []
+            for subj_name in failed_subjects:
+                info = papers.get(subj_name, {
+                    'subject': subj_name, 'cleared': False, 'cleared_in': None,
+                    'cleared_exam_id': None, 'new_external': '', 'new_internal': '',
+                    'new_grade': '', 'new_total': '', 'attempts': []
+                })
+                paper_statuses.append(info)
+                if not info['cleared']:
+                    still_failed.append(subj_name)
+            sem_entry['paper_statuses'] = paper_statuses
+            sem_entry['still_failed_subjects'] = still_failed
+            sem_entry['all_cleared'] = len(still_failed) == 0
+
+        semester_results[str(sem_num)] = sem_entry
+
+    return {
+        'prn': prn,
+        'name': student_name,
+        'semester_results': semester_results,
+    }
+
+
+@app.route('/api/analyze_all_semesters', methods=['POST'])
+def analyze_all_semesters():
+    """Analyze all semesters in a course for a PRN range."""
+    data = request.json or {}
+    project_id = data.get('project_id', '3')
+    cs_id = data.get('cs_id', '421')
+    prn_start = data.get('prn_start', '')
+    prn_end = data.get('prn_end', '')
+    delay = float(data.get('delay', 0.1))
+    check_upcoming = bool(data.get('check_upcoming', True))
+
+    if not prn_start or not prn_end:
+        return jsonify({'success': False, 'error': 'Missing PRN range'})
+    if not prn_start.isdigit() or not prn_end.isdigit():
+        return jsonify({'success': False, 'error': 'PRN must be numeric'})
+    if len(prn_start) != 12 or len(prn_end) != 12:
+        return jsonify({'success': False, 'error': 'PRN must be exactly 12 digits'})
+
+    start = int(prn_start)
+    end = int(prn_end)
+    if start > end:
+        return jsonify({'success': False, 'error': 'Start PRN must be less than or equal to End PRN'})
+    if end - start > 100:
+        return jsonify({'success': False, 'error': 'All-Semester scan supports up to 100 PRNs at a time.'})
+
+    url = f"{BASE_URL}/{project_id}/{cs_id}"
+    _, all_exams = get_courses_and_exams(project_id, cs_id)
+    sem_groups = group_exams_by_semester(all_exams)
+
+    prn_list = [str(n).zfill(12) for n in range(start, end + 1)]
+    student_records = []
+
+    with ThreadPoolExecutor(max_workers=4) as executor:
+        futures = {
+            executor.submit(_scan_prn_all_semesters, url, cs_id, prn, sem_groups, delay, check_upcoming): prn
+            for prn in prn_list
+        }
+        for fut in as_completed(futures):
+            student_records.append(fut.result())
+
+    student_records.sort(key=lambda s: s['prn'])
+
+    # Aggregate semester-wise & overall course statistics
+    sem_stats = {}
+    students_summary = []
+    students_found = 0
+    students_all_clear = 0
+    students_with_pending = 0
+    total_pending_papers = 0
+
+    for stu in student_records:
+        sem_res = stu['semester_results']
+        if not sem_res:
+            continue
+
+        students_found += 1
+        total_initial_fail = 0
+        total_cleared = 0
+        total_still_failed = 0
+
+        for sem_key, sr in sem_res.items():
+            if sem_key not in sem_stats:
+                sem_num_int = int(sem_key)
+                sem_stats[sem_key] = {
+                    'semester': sem_num_int,
+                    'semester_label': f"Semester {sem_num_int}" if sem_num_int != 999 else 'Other Exams',
+                    'results_found': 0,
+                    'initial_failures': 0,
+                    'cleared_all': 0,
+                    'still_failed': 0,
+                    'subject_failures': defaultdict(lambda: {'count': 0, 'cleared_later': 0, 'still_failed': 0})
+                }
+            st = sem_stats[sem_key]
+            st['results_found'] += 1
+
+            init_f = len(sr['failed_subjects'])
+            still_f = len(sr['still_failed_subjects'])
+            cleared_f = init_f - still_f
+
+            total_initial_fail += init_f
+            total_cleared += cleared_f
+            total_still_failed += still_f
+
+            if init_f > 0:
+                st['initial_failures'] += 1
+                if sr['all_cleared']:
+                    st['cleared_all'] += 1
+                else:
+                    st['still_failed'] += 1
+
+                cleared_set = {p['subject'] for p in sr.get('paper_statuses', []) if p.get('cleared')}
+                for subj_name in sr['failed_subjects']:
+                    sf = st['subject_failures'][subj_name]
+                    sf['count'] += 1
+                    if subj_name in cleared_set:
+                        sf['cleared_later'] += 1
+                    else:
+                        sf['still_failed'] += 1
+
+        if total_still_failed == 0:
+            students_all_clear += 1
+        else:
+            students_with_pending += 1
+            total_pending_papers += total_still_failed
+
+        students_summary.append({
+            'prn': stu['prn'],
+            'name': stu['name'],
+            'semesters_appeared': len(sem_res),
+            'total_failed_initial': total_initial_fail,
+            'total_cleared': total_cleared,
+            'total_still_failed': total_still_failed,
+            'semester_results': sem_res,
+        })
+
+    semesters_list = []
+    for sem_key in sorted(sem_stats.keys(), key=lambda k: int(k)):
+        st = sem_stats[sem_key]
+        st['subject_failures_sorted'] = sorted(
+            ((k, dict(v)) for k, v in st['subject_failures'].items()),
+            key=lambda x: x[1]['count'],
+            reverse=True
+        )
+        del st['subject_failures']
+        semesters_list.append(st)
+
+    return jsonify({
+        'success': True,
+        'course_analysis': {
+            'overall': {
+                'total_prns_checked': len(prn_list),
+                'students_found': students_found,
+                'students_all_clear': students_all_clear,
+                'students_with_pending': students_with_pending,
+                'total_pending_papers': total_pending_papers,
+                'semesters_with_results': len(semesters_list),
+            },
+            'semesters': semesters_list,
+            'students': students_summary,
+        }
+    })
+
+
 @app.route('/api/analyze_stream', methods=['POST'])
 def analyze_stream():
     """
