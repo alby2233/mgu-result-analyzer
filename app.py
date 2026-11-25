@@ -417,6 +417,8 @@ def check_upcoming_for_failed_students(session, url, cs_id, failed_students, upc
                 'cleared': False,
                 'cleared_in': None,
                 'cleared_exam_id': None,
+                'new_external': '',
+                'new_internal': '',
                 'new_grade': '',
                 'new_total': '',
                 'attempts': []
@@ -448,6 +450,8 @@ def check_upcoming_for_failed_students(session, url, cs_id, failed_students, upc
                             'exam_id': exam['value'],
                             'exam_name': exam['text'],
                             'failed': subj.get('failed', False),
+                            'external': subj.get('external', ''),
+                            'internal': subj.get('internal', ''),
                             'grade': subj.get('grade', ''),
                             'total': subj.get('total', '')
                         })
@@ -455,6 +459,8 @@ def check_upcoming_for_failed_students(session, url, cs_id, failed_students, upc
                             paper_info['cleared'] = True
                             paper_info['cleared_in'] = exam['text']
                             paper_info['cleared_exam_id'] = exam['value']
+                            paper_info['new_external'] = subj.get('external', '')
+                            paper_info['new_internal'] = subj.get('internal', '')
                             paper_info['new_grade'] = subj.get('grade', '')
                             paper_info['new_total'] = subj.get('total', '')
 
@@ -485,6 +491,8 @@ def apply_upcoming_tracking(analysis, student_tracking, upcoming_exams):
                 'cleared': False,
                 'cleared_in': None,
                 'cleared_exam_id': None,
+                'new_external': '',
+                'new_internal': '',
                 'new_grade': '',
                 'new_total': '',
                 'attempts': []

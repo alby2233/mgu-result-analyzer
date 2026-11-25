@@ -1028,6 +1028,115 @@
             z-index: 2000;
         }
 
+        /* Ultimate Animations & Aurora Ambient Depth */
+        body::before {
+            content: '';
+            position: fixed;
+            inset: 0;
+            z-index: -1;
+            pointer-events: none;
+            background:
+                radial-gradient(600px circle at 12% 18%, rgba(26, 115, 232, 0.09), transparent 60%),
+                radial-gradient(500px circle at 88% 75%, rgba(124, 77, 255, 0.08), transparent 60%);
+            animation: auroraDrift 16s ease-in-out infinite alternate;
+        }
+
+        @keyframes auroraDrift {
+            0% { transform: translate3d(0, 0, 0) scale(1); }
+            100% { transform: translate3d(2%, -2%, 0) scale(1.06); }
+        }
+
+        .btn-primary {
+            position: relative;
+            overflow: hidden;
+        }
+
+        .btn-primary::after {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -120%;
+            width: 60%;
+            height: 100%;
+            background: linear-gradient(120deg, transparent, rgba(255,255,255,0.35), transparent);
+            transform: skewX(-20deg);
+            transition: left 0.65s ease;
+        }
+
+        .btn-primary:hover::after {
+            left: 140%;
+        }
+
+        .progress-bar {
+            background-size: 200% 100%;
+            background-image: linear-gradient(90deg, var(--primary), #4fc3f7, var(--accent), var(--primary));
+            animation: shimmerFlow 2.2s linear infinite;
+        }
+
+        @keyframes shimmerFlow {
+            0% { background-position: 0% 50%; }
+            100% { background-position: 200% 50%; }
+        }
+
+        .tab-content.active {
+            animation: tabEnter 0.42s cubic-bezier(0.22, 1, 0.36, 1);
+        }
+
+        @keyframes tabEnter {
+            from {
+                opacity: 0;
+                transform: perspective(900px) rotateX(4deg) translateY(12px) scale(0.99);
+            }
+            to {
+                opacity: 1;
+                transform: perspective(900px) rotateX(0deg) translateY(0) scale(1);
+            }
+        }
+
+        @keyframes rowSlideIn {
+            from {
+                opacity: 0;
+                transform: translateY(10px) scale(0.99);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0) scale(1);
+            }
+        }
+
+        .data-table tbody tr {
+            animation: rowSlideIn 0.35s cubic-bezier(0.22, 1, 0.36, 1) both;
+        }
+
+        .bar-fill {
+            transform-origin: left center;
+            animation: barGrow 0.8s cubic-bezier(0.22, 1, 0.36, 1) both;
+        }
+
+        @keyframes barGrow {
+            from { transform: scaleX(0); opacity: 0.4; }
+            to { transform: scaleX(1); opacity: 1; }
+        }
+
+        .coverflow-item.active {
+            animation: activeGlow 2.4s ease-in-out infinite;
+        }
+
+        @keyframes activeGlow {
+            0%, 100% { box-shadow: 0 12px 28px rgba(26,115,232,0.24); }
+            50% { box-shadow: 0 16px 36px rgba(124,77,255,0.34); }
+        }
+
+        .donut-ring circle {
+            transition: stroke-dasharray 0.9s cubic-bezier(0.22, 1, 0.36, 1);
+        }
+
+        @media (prefers-reduced-motion: reduce) {
+            body::before, .header, .progress-bar, .bar-fill, .data-table tbody tr, .coverflow-item.active, .tab-content.active {
+                animation: none !important;
+            }
+        }
+
         @media (max-width: 768px) {
             .header { padding: 16px 0; }
             .header-content { padding: 0 16px; gap: 12px; }
@@ -1632,6 +1741,7 @@
         }
         document.getElementById('statsGrid').innerHTML = statsHtml;
         animateStatCounters();
+        initPointer3DTilt();
         renderDonutOverview(analysis);
 
         if (analysis.results_found > 0 && (analysis.students_with_failures === 0 || (analysis.upcoming_checked && analysis.students_still_failed === 0))) {
@@ -1782,22 +1892,55 @@
     function renderStudentDetailCard(s) {
         const scene = document.getElementById('studentDetailScene');
         const subjects = s.subjects || [];
+        const paperMap = {};
+        if (currentAnalysis && currentAnalysis.upcoming_checked && s.paper_statuses) {
+            s.paper_statuses.forEach(p => { paperMap[p.subject] = p; });
+        }
+
         const passedCount = subjects.filter(sub => !sub.failed).length;
-        const failedCount = subjects.filter(sub => sub.failed).length;
+        let clearedCount = 0;
+        let stillFailedCount = 0;
+        subjects.forEach(sub => {
+            if (sub.failed) {
+                const ps = paperMap[sub.name];
+                if (ps && ps.cleared) clearedCount++;
+                else stillFailedCount++;
+            }
+        });
 
         const subjectRows = subjects.length
-            ? subjects.map((sub, idx) => `
-                <tr>
-                    <td>${idx + 1}</td>
-                    <td>${escapeHtml(sub.code || '-')}</td>
-                    <td><strong>${escapeHtml(sub.name || '-')}</strong></td>
-                    <td>${escapeHtml(sub.external || '-')}</td>
-                    <td>${escapeHtml(sub.internal || '-')}</td>
-                    <td>${escapeHtml(sub.total || '-')}</td>
-                    <td>${escapeHtml(sub.grade || '-')}</td>
-                    <td>${sub.failed ? '<span class="badge badge-fail">FAIL</span>' : '<span class="badge badge-pass">PASS</span>'}</td>
-                </tr>
-            `).join('')
+            ? subjects.map((sub, idx) => {
+                const ps = sub.failed ? paperMap[sub.name] : null;
+                const isCleared = Boolean(ps && ps.cleared);
+                const ext = isCleared && ps.new_external ? ps.new_external : (sub.external || '-');
+                const intl = isCleared && ps.new_internal ? ps.new_internal : (sub.internal || '-');
+                const tot = isCleared && ps.new_total ? ps.new_total : (sub.total || '-');
+                const grd = isCleared && ps.new_grade ? ps.new_grade : (sub.grade || '-');
+
+                const subjSubtext = isCleared
+                    ? `<div style="font-size:11px; color:var(--primary); margin-top:2px;"><i class="fas fa-check-circle"></i> Cleared in ${escapeHtml(ps.cleared_in || 'Upcoming Exam')}</div>`
+                    : '';
+
+                let resultBadge = '<span class="badge badge-pass">PASS</span>';
+                if (sub.failed) {
+                    resultBadge = isCleared
+                        ? '<span class="badge badge-cleared">CLEARED</span>'
+                        : '<span class="badge badge-fail">FAIL</span>';
+                }
+
+                return `
+                    <tr>
+                        <td>${idx + 1}</td>
+                        <td>${escapeHtml(sub.code || '-')}</td>
+                        <td><strong>${escapeHtml(sub.name || '-')}</strong>${subjSubtext}</td>
+                        <td>${escapeHtml(ext)}</td>
+                        <td>${escapeHtml(intl)}</td>
+                        <td>${escapeHtml(tot)}</td>
+                        <td>${escapeHtml(grd)}</td>
+                        <td>${resultBadge}</td>
+                    </tr>
+                `;
+            }).join('')
             : '<tr><td colspan="8" style="text-align:center; padding:24px; color:var(--text-secondary);">No subject breakdown available.</td></tr>';
 
         let backHtml = '';
@@ -1806,14 +1949,14 @@
         } else if (currentAnalysis.upcoming_checked && s.paper_statuses) {
             backHtml = s.paper_statuses.map(p => {
                 const attemptsHtml = (p.attempts || []).length
-                    ? p.attempts.map(a => `<div style="font-size:12px; margin-top:4px; color:var(--text-secondary);">&bull; ${escapeHtml(a.exam_name)}: <strong>${a.failed ? 'Failed' : 'Passed'}</strong>${a.grade ? ' (Grade: ' + escapeHtml(a.grade) + ')' : ''}</div>`).join('')
+                    ? p.attempts.map(a => `<div style="font-size:12px; margin-top:4px; color:var(--text-secondary);">&bull; ${escapeHtml(a.exam_name)}: <strong>${a.failed ? 'Failed' : 'Passed'}</strong>${a.total ? ' — Total: ' + escapeHtml(a.total) : ''}${a.grade ? ' (Grade: ' + escapeHtml(a.grade) + ')' : ''}</div>`).join('')
                     : '<div style="font-size:12px; margin-top:4px; color:var(--text-secondary);">No subsequent attempt found in checked upcoming exams.</div>';
                 return `
-                    <div style="padding:12px; border:1px solid var(--border); border-radius:8px; margin-bottom:10px; background:#fff;">
+                    <div style="padding:12px; border:1px solid var(--border); border-radius:8px; margin-bottom:10px; background:var(--surface);">
                         <div style="display:flex; justify-content:space-between; align-items:center; gap:8px; flex-wrap:wrap;">
                             <strong>${escapeHtml(p.subject)}</strong>
                             ${p.cleared
-                                ? `<span class="badge badge-pass">Passed in ${escapeHtml(p.cleared_in || 'Upcoming')}</span>`
+                                ? `<span class="badge badge-cleared">Passed in ${escapeHtml(p.cleared_in || 'Upcoming')}</span>`
                                 : '<span class="badge badge-fail">Still Failed</span>'}
                         </div>
                         ${attemptsHtml}
@@ -1835,7 +1978,8 @@
                         <div style="display:flex; gap:8px; flex-wrap:wrap;">
                             <span class="badge badge-na">${subjects.length} Subjects</span>
                             <span class="badge badge-pass">${passedCount} Passed</span>
-                            ${failedCount > 0 ? `<span class="badge badge-fail">${failedCount} Failed</span>` : ''}
+                            ${clearedCount > 0 ? `<span class="badge badge-cleared">${clearedCount} Cleared</span>` : ''}
+                            ${stillFailedCount > 0 ? `<span class="badge badge-fail">${stillFailedCount} Failed</span>` : ''}
                         </div>
                     </div>
                     <div class="table-container">
@@ -2326,6 +2470,23 @@
         return String(str).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
     }
 
+    function initPointer3DTilt() {
+        if (window.matchMedia('(pointer: coarse)').matches || window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+        document.querySelectorAll('.stat-card').forEach(card => {
+            if (card.dataset.tiltBound) return;
+            card.dataset.tiltBound = '1';
+            card.addEventListener('mousemove', e => {
+                const r = card.getBoundingClientRect();
+                const x = (e.clientX - r.left) / r.width - 0.5;
+                const y = (e.clientY - r.top) / r.height - 0.5;
+                card.style.transform = `perspective(700px) rotateX(${(-y * 10).toFixed(1)}deg) rotateY(${(x * 10).toFixed(1)}deg) translateY(-4px)`;
+            });
+            card.addEventListener('mouseleave', () => {
+                card.style.transform = '';
+            });
+        });
+    }
+
     // Restore theme and last PRN range on load
     window.addEventListener('DOMContentLoaded', () => {
         try {
@@ -2340,6 +2501,7 @@
             if (sPrn) document.getElementById('prnStart').value = sPrn;
             if (ePrn) document.getElementById('prnEnd').value = ePrn;
         } catch (e) {}
+        initPointer3DTilt();
     });
 
     // Close modal on overlay click
