@@ -11,16 +11,37 @@
         :root {
             --primary: #1a73e8;
             --primary-dark: #1557b0;
+            --accent: #7c4dff;
             --danger: #dc3545;
             --success: #28a745;
             --warning: #ffc107;
             --bg: #f0f2f5;
-            --card: #ffffff;
+            --card: rgba(255, 255, 255, 0.94);
+            --card-solid: #ffffff;
+            --surface: #f8f9fa;
             --text: #202124;
             --text-secondary: #5f6368;
             --border: #dadce0;
-            --shadow: 0 1px 3px rgba(0,0,0,0.12), 0 1px 2px rgba(0,0,0,0.08);
-            --shadow-lg: 0 4px 16px rgba(0,0,0,0.12);
+            --shadow: 0 2px 8px rgba(0,0,0,0.08), 0 1px 3px rgba(0,0,0,0.06);
+            --shadow-lg: 0 10px 30px rgba(0,0,0,0.12);
+        }
+
+        [data-theme="dark"] {
+            --primary: #64b5f6;
+            --primary-dark: #42a5f5;
+            --accent: #b388ff;
+            --danger: #ff6b6b;
+            --success: #51cf66;
+            --warning: #ffd43b;
+            --bg: #0d1117;
+            --card: rgba(22, 27, 34, 0.92);
+            --card-solid: #161b22;
+            --surface: #21262d;
+            --text: #e6edf3;
+            --text-secondary: #8b949e;
+            --border: #30363d;
+            --shadow: 0 4px 16px rgba(0,0,0,0.4);
+            --shadow-lg: 0 12px 36px rgba(0,0,0,0.55);
         }
 
         body {
@@ -28,16 +49,46 @@
             background: var(--bg);
             color: var(--text);
             min-height: 100vh;
+            transition: background 0.35s ease, color 0.35s ease;
         }
 
         .header {
-            background: linear-gradient(135deg, #1a237e 0%, #1565c0 100%);
+            position: relative;
+            overflow: hidden;
+            background: linear-gradient(135deg, #1a237e 0%, #1565c0 45%, #512da8 100%);
+            background-size: 200% 200%;
+            animation: gradientShift 12s ease infinite;
             color: white;
             padding: 24px 0;
             box-shadow: var(--shadow-lg);
         }
 
+        @keyframes gradientShift {
+            0% { background-position: 0% 50%; }
+            50% { background-position: 100% 50%; }
+            100% { background-position: 0% 50%; }
+        }
+
+        .header::before, .header::after {
+            content: '';
+            position: absolute;
+            border-radius: 50%;
+            background: radial-gradient(circle, rgba(255,255,255,0.18), transparent 70%);
+            pointer-events: none;
+            animation: floatOrb 8s ease-in-out infinite;
+        }
+
+        .header::before { width: 220px; height: 220px; top: -80px; right: 8%; }
+        .header::after { width: 160px; height: 160px; bottom: -70px; left: 15%; animation-delay: -4s; }
+
+        @keyframes floatOrb {
+            0%, 100% { transform: translateY(0) scale(1); }
+            50% { transform: translateY(-16px) scale(1.08); }
+        }
+
         .header-content {
+            position: relative;
+            z-index: 1;
             max-width: 1200px;
             margin: 0 auto;
             padding: 0 24px;
@@ -49,12 +100,41 @@
         .header-icon {
             width: 56px;
             height: 56px;
-            background: rgba(255,255,255,0.15);
-            border-radius: 12px;
+            background: rgba(255,255,255,0.16);
+            backdrop-filter: blur(8px);
+            border: 1px solid rgba(255,255,255,0.25);
+            border-radius: 14px;
             display: flex;
             align-items: center;
             justify-content: center;
             font-size: 24px;
+            transition: transform 0.4s cubic-bezier(0.22, 1, 0.36, 1);
+        }
+
+        .header-icon:hover {
+            transform: rotateY(180deg) scale(1.08);
+        }
+
+        .theme-toggle {
+            margin-left: auto;
+            background: rgba(255,255,255,0.16);
+            border: 1px solid rgba(255,255,255,0.28);
+            color: white;
+            width: 42px;
+            height: 42px;
+            border-radius: 50%;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 17px;
+            transition: transform 0.3s, background 0.3s;
+            flex-shrink: 0;
+        }
+
+        .theme-toggle:hover {
+            background: rgba(255,255,255,0.28);
+            transform: rotate(20deg) scale(1.08);
         }
 
         .header h1 { font-size: 24px; font-weight: 600; }
@@ -68,10 +148,13 @@
 
         .card {
             background: var(--card);
-            border-radius: 12px;
+            backdrop-filter: blur(12px);
+            border: 1px solid var(--border);
+            border-radius: 14px;
             box-shadow: var(--shadow);
             padding: 24px;
             margin-bottom: 24px;
+            transition: background 0.35s ease, border-color 0.35s ease, box-shadow 0.3s ease;
         }
 
         .card-title {
@@ -756,6 +839,195 @@
             }
         }
 
+        /* Dark-mode surface overrides & enhanced widgets */
+        [data-theme="dark"] .form-group select,
+        [data-theme="dark"] .form-group input,
+        [data-theme="dark"] .explorer-controls input,
+        [data-theme="dark"] .explorer-controls select,
+        [data-theme="dark"] #delayInput,
+        [data-theme="dark"] .filter-bar input {
+            background: var(--surface);
+            color: var(--text);
+            border-color: var(--border);
+        }
+
+        [data-theme="dark"] .upcoming-box,
+        [data-theme="dark"] .upcoming-exam-pill,
+        [data-theme="dark"] .modal,
+        [data-theme="dark"] .flip-face,
+        [data-theme="dark"] .flip-face-back,
+        [data-theme="dark"] .data-table thead th,
+        [data-theme="dark"] .btn-secondary {
+            background: var(--card-solid);
+            color: var(--text);
+            border-color: var(--border);
+        }
+
+        [data-theme="dark"] .data-table tbody tr:hover,
+        [data-theme="dark"] .clickable-row:hover {
+            background: rgba(100, 181, 246, 0.1) !important;
+        }
+
+        [data-theme="dark"] .coverflow-item {
+            background: linear-gradient(145deg, #1c222b, #141920);
+        }
+
+        [data-theme="dark"] .coverflow-item.active {
+            background: linear-gradient(145deg, #1e2d44, #162133);
+        }
+
+        [data-theme="dark"] .bar-track {
+            background: var(--surface);
+        }
+
+        .stat-card {
+            transition: transform 0.25s cubic-bezier(0.22, 1, 0.36, 1), box-shadow 0.25s ease;
+        }
+
+        .stat-card:hover {
+            transform: perspective(700px) translateY(-4px) rotateX(4deg);
+            box-shadow: var(--shadow-lg);
+        }
+
+        /* Donut Summary Overview */
+        .donut-overview {
+            display: flex;
+            align-items: center;
+            gap: 24px;
+            flex-wrap: wrap;
+        }
+
+        .donut-ring {
+            width: 110px;
+            height: 110px;
+            position: relative;
+            flex-shrink: 0;
+        }
+
+        .donut-ring svg {
+            transform: rotate(-90deg);
+            width: 100%;
+            height: 100%;
+        }
+
+        .donut-center {
+            position: absolute;
+            inset: 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            font-weight: 700;
+            font-size: 20px;
+        }
+
+        .donut-center span {
+            font-size: 11px;
+            font-weight: 500;
+            color: var(--text-secondary);
+        }
+
+        .donut-legend {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 14px;
+            flex: 1;
+        }
+
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 13px;
+            background: var(--surface);
+            padding: 8px 14px;
+            border-radius: 8px;
+            border: 1px solid var(--border);
+        }
+
+        .legend-dot {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            flex-shrink: 0;
+        }
+
+        /* Live Search & Filter Bar */
+        .filter-bar {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            align-items: center;
+            margin-bottom: 14px;
+        }
+
+        .filter-bar input {
+            flex: 1;
+            min-width: 200px;
+            padding: 9px 14px;
+            border: 2px solid var(--border);
+            border-radius: 8px;
+            font-size: 14px;
+            outline: none;
+            background: white;
+        }
+
+        .filter-bar input:focus {
+            border-color: var(--primary);
+        }
+
+        .filter-pills {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 6px;
+        }
+
+        .filter-pill {
+            padding: 6px 12px;
+            border-radius: 20px;
+            border: 1px solid var(--border);
+            background: var(--surface);
+            color: var(--text-secondary);
+            font-size: 12px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .filter-pill.active, .filter-pill:hover {
+            background: var(--primary);
+            color: white;
+            border-color: var(--primary);
+        }
+
+        .bar-row.clickable {
+            cursor: pointer;
+            padding: 4px 6px;
+            border-radius: 8px;
+            transition: background 0.2s, transform 0.2s;
+        }
+
+        .bar-row.clickable:hover {
+            background: var(--surface);
+            transform: translateX(4px);
+        }
+
+        .sortable-th {
+            cursor: pointer;
+            user-select: none;
+        }
+
+        .sortable-th:hover {
+            color: var(--primary) !important;
+        }
+
+        #confettiCanvas {
+            position: fixed;
+            inset: 0;
+            pointer-events: none;
+            z-index: 2000;
+        }
+
         @media (max-width: 768px) {
             .header { padding: 16px 0; }
             .header-content { padding: 0 16px; gap: 12px; }
@@ -789,10 +1061,11 @@
             .modal { width: 95%; max-height: 90vh; }
             .modal-body { padding: 16px; }
         }
-        }
     </style>
 </head>
 <body>
+
+<canvas id="confettiCanvas"></canvas>
 
 <div class="header">
     <div class="header-content">
@@ -801,6 +1074,9 @@
             <h1>MGU Pareeksha Result Analyzer</h1>
             <p>Analyze batch-wise semester results &bull; Subject failure statistics &bull; Student performance tracking</p>
         </div>
+        <button class="theme-toggle" id="themeToggleBtn" onclick="toggleTheme()" title="Toggle Dark / Light Mode">
+            <i class="fas fa-moon"></i>
+        </button>
     </div>
 </div>
 
@@ -895,6 +1171,12 @@
         <!-- Summary Stats -->
         <div class="stats-grid" id="statsGrid"></div>
 
+        <!-- Pass Rate Donut Overview -->
+        <div class="card" id="donutOverviewCard" style="display:none;">
+            <div class="card-title"><i class="fas fa-chart-pie"></i> Batch Pass Overview</div>
+            <div class="donut-overview" id="donutOverview"></div>
+        </div>
+
         <!-- Detailed Results -->
         <div class="card">
             <div class="tabs">
@@ -913,8 +1195,11 @@
             </div>
 
             <div class="export-row">
-                <button class="btn btn-secondary btn-sm" onclick="exportCSV()">
-                    <i class="fas fa-file-csv"></i> Export CSV
+                <button class="btn btn-secondary btn-sm" onclick="exportCSV(false)">
+                    <i class="fas fa-file-csv"></i> Export All CSV
+                </button>
+                <button class="btn btn-secondary btn-sm" onclick="exportCSV(true)">
+                    <i class="fas fa-user-times"></i> Export Failed CSV
                 </button>
                 <button class="btn btn-secondary btn-sm" onclick="printResults()">
                     <i class="fas fa-print"></i> Print
@@ -926,20 +1211,29 @@
 
             <!-- Subject Failures Tab -->
             <div class="tab-content active" id="tab-subjectFailures">
+                <p style="font-size:12px; color:var(--text-secondary); margin-bottom:10px;"><i class="fas fa-mouse-pointer"></i> Tip: Click any subject bar to see the list of students who failed that subject.</p>
                 <div id="subjectChart" class="bar-chart"></div>
             </div>
 
             <!-- Failed Students Tab -->
             <div class="tab-content" id="tab-failedStudents">
+                <div class="filter-bar">
+                    <input type="text" id="failedSearchInput" placeholder="Search failed students by PRN, Name, or Subject..." oninput="filterFailedTable()">
+                    <div class="filter-pills">
+                        <button class="filter-pill active" onclick="setFailedFilter('all', this)">All</button>
+                        <button class="filter-pill" onclick="setFailedFilter('still_failed', this)">Still Failed</button>
+                        <button class="filter-pill" onclick="setFailedFilter('cleared', this)">Cleared Later</button>
+                    </div>
+                </div>
                 <div class="table-container">
                     <table class="data-table">
                         <thead>
                             <tr>
                                 <th>#</th>
-                                <th>PRN</th>
-                                <th>Name</th>
+                                <th class="sortable-th" onclick="sortTable('failed', 'prn')">PRN <i class="fas fa-sort"></i></th>
+                                <th class="sortable-th" onclick="sortTable('failed', 'name')">Name <i class="fas fa-sort"></i></th>
                                 <th>Failed Papers &amp; Upcoming Status</th>
-                                <th>Initial Failed</th>
+                                <th class="sortable-th" onclick="sortTable('failed', 'count')">Initial Failed <i class="fas fa-sort"></i></th>
                                 <th>Current Status</th>
                             </tr>
                         </thead>
@@ -950,15 +1244,24 @@
 
             <!-- All Students Tab -->
             <div class="tab-content" id="tab-allStudents">
+                <div class="filter-bar">
+                    <input type="text" id="allSearchInput" placeholder="Search all students by PRN or Name..." oninput="filterAllTable()">
+                    <div class="filter-pills">
+                        <button class="filter-pill active" onclick="setAllFilter('all', this)">All</button>
+                        <button class="filter-pill" onclick="setAllFilter('pass', this)">First Pass</button>
+                        <button class="filter-pill" onclick="setAllFilter('cleared', this)">Cleared Later</button>
+                        <button class="filter-pill" onclick="setAllFilter('fail', this)">Failed</button>
+                    </div>
+                </div>
                 <div class="table-container">
                     <table class="data-table">
                         <thead>
                             <tr>
                                 <th>#</th>
-                                <th>PRN</th>
-                                <th>Name</th>
+                                <th class="sortable-th" onclick="sortTable('all', 'prn')">PRN <i class="fas fa-sort"></i></th>
+                                <th class="sortable-th" onclick="sortTable('all', 'name')">Name <i class="fas fa-sort"></i></th>
                                 <th>Total Subjects</th>
-                                <th>Failed</th>
+                                <th class="sortable-th" onclick="sortTable('all', 'count')">Failed <i class="fas fa-sort"></i></th>
                                 <th>Status</th>
                             </tr>
                         </thead>
@@ -1133,6 +1436,12 @@
 
         const total = parseInt(prnEnd) - parseInt(prnStart) + 1;
         if (total > 500) return showToast('Maximum 500 students at a time');
+
+        // Persist last used PRN range
+        try {
+            localStorage.setItem('mgu_prn_start', prnStart);
+            localStorage.setItem('mgu_prn_end', prnEnd);
+        } catch (e) {}
 
         const btn = document.getElementById('analyzeBtn');
         btn.disabled = true;
@@ -1322,6 +1631,12 @@
             `;
         }
         document.getElementById('statsGrid').innerHTML = statsHtml;
+        animateStatCounters();
+        renderDonutOverview(analysis);
+
+        if (analysis.results_found > 0 && (analysis.students_with_failures === 0 || (analysis.upcoming_checked && analysis.students_still_failed === 0))) {
+            launchConfetti();
+        }
 
         // Subject Failure Chart
         const chartDiv = document.getElementById('subjectChart');
@@ -1334,7 +1649,7 @@
                     ? ` (${data.cleared_later || 0} cleared later, ${data.still_failed ?? data.count} still pending)`
                     : '';
                 return `
-                    <div class="bar-row">
+                    <div class="bar-row clickable" onclick="openSubjectModal('${escapeAttr(name)}')" title="Click to see students who failed ${escapeHtml(name)}">
                         <div class="bar-label" title="${escapeHtml(name)}">${escapeHtml(name)}</div>
                         <div class="bar-track">
                             <div class="bar-fill" style="width: ${barWidth}%">
@@ -1349,73 +1664,8 @@
             chartDiv.innerHTML = '<p style="text-align:center; color:var(--text-secondary); padding:40px;"><i class="fas fa-check-circle" style="font-size:48px; color:var(--success); display:block; margin-bottom:12px;"></i>No subject failures found! 🎉</p>';
         }
 
-        // Failed Students Table
-        const failedBody = document.getElementById('failedTableBody');
-        if (analysis.failed_students && analysis.failed_students.length > 0) {
-            failedBody.innerHTML = analysis.failed_students.map((s, i) => {
-                let chipsHtml = '';
-                if (analysis.upcoming_checked && s.paper_statuses) {
-                    chipsHtml = s.paper_statuses.map(p => {
-                        if (p.cleared) {
-                            const extra = p.new_grade ? ` (${p.new_grade})` : '';
-                            return `<span class="cleared-subject-chip" title="Cleared in ${escapeHtml(p.cleared_in || '')}"><i class="fas fa-check"></i> ${escapeHtml(p.subject)}${escapeHtml(extra)} — Passed in ${escapeHtml(p.cleared_in || 'Upcoming')}</span>`;
-                        }
-                        return `<span class="failed-subject-chip"><i class="fas fa-times"></i> ${escapeHtml(p.subject)} — Still Failed</span>`;
-                    }).join('');
-                } else {
-                    chipsHtml = s.failed_subjects.map(f => `<span class="failed-subject-chip">${escapeHtml(f)}</span>`).join('');
-                }
-
-                let currentStatusBadge = '<span class="badge badge-na">Not Checked</span>';
-                if (analysis.upcoming_checked) {
-                    currentStatusBadge = s.all_cleared
-                        ? '<span class="badge badge-cleared">ALL CLEARED</span>'
-                        : `<span class="badge badge-fail">STILL FAILED (${(s.still_failed_subjects || []).length})</span>`;
-                }
-
-                return `
-                    <tr class="clickable-row" title="Click to view full 3D marklist" onclick="openStudentExplorer('${s.prn}')">
-                        <td>${i + 1}</td>
-                        <td><strong>${s.prn}</strong></td>
-                        <td>${escapeHtml(s.name || '-')}</td>
-                        <td><div class="failed-subjects">${chipsHtml}</div></td>
-                        <td><span class="badge badge-fail">${s.failed_subjects.length}</span></td>
-                        <td>${currentStatusBadge}</td>
-                    </tr>
-                `;
-            }).join('');
-        } else {
-            failedBody.innerHTML = '<tr><td colspan="6" style="text-align:center; padding:40px; color:var(--text-secondary);">No failed students found</td></tr>';
-        }
-
-        // All Students Table
-        const allBody = document.getElementById('allTableBody');
-        if (analysis.all_students && analysis.all_students.length > 0) {
-            allBody.innerHTML = analysis.all_students.map((s, i) => {
-                let statusBadge = '<span class="badge badge-pass">PASS</span>';
-                if (s.failed_subjects.length > 0) {
-                    if (analysis.upcoming_checked && s.all_cleared) {
-                        statusBadge = '<span class="badge badge-cleared">CLEARED LATER</span>';
-                    } else if (analysis.upcoming_checked) {
-                        statusBadge = `<span class="badge badge-fail">STILL FAILED (${(s.still_failed_subjects || []).length})</span>`;
-                    } else {
-                        statusBadge = '<span class="badge badge-fail">FAIL</span>';
-                    }
-                }
-                return `
-                    <tr class="clickable-row" title="Click to view full 3D marklist" onclick="openStudentExplorer('${s.prn}')">
-                        <td>${i + 1}</td>
-                        <td><strong>${s.prn}</strong></td>
-                        <td>${escapeHtml(s.name || '-')}</td>
-                        <td>${s.total_subjects}</td>
-                        <td>${s.failed_subjects.length}</td>
-                        <td>${statusBadge}</td>
-                    </tr>
-                `;
-            }).join('');
-        } else {
-            allBody.innerHTML = '<tr><td colspan="6" style="text-align:center; padding:40px; color:var(--text-secondary);">No results found</td></tr>';
-        }
+        renderFailedTable(analysis.failed_students || []);
+        renderAllTable(analysis.all_students || []);
 
         // Populate 3D Student Explorer
         initStudentExplorer(analysis);
@@ -1723,15 +1973,303 @@
         document.getElementById('testModal').classList.remove('active');
     }
 
-    function exportCSV() {
+    let failedFilterMode = 'all';
+    let allFilterMode = 'all';
+    let sortState = { failed: { key: 'prn', asc: true }, all: { key: 'prn', asc: true } };
+
+    function renderFailedTable(students) {
+        const failedBody = document.getElementById('failedTableBody');
+        const analysis = currentAnalysis || {};
+        if (students && students.length > 0) {
+            failedBody.innerHTML = students.map((s, i) => {
+                let chipsHtml = '';
+                if (analysis.upcoming_checked && s.paper_statuses) {
+                    chipsHtml = s.paper_statuses.map(p => {
+                        if (p.cleared) {
+                            const extra = p.new_grade ? ` (${p.new_grade})` : '';
+                            return `<span class="cleared-subject-chip" title="Cleared in ${escapeHtml(p.cleared_in || '')}"><i class="fas fa-check"></i> ${escapeHtml(p.subject)}${escapeHtml(extra)} — Passed in ${escapeHtml(p.cleared_in || 'Upcoming')}</span>`;
+                        }
+                        return `<span class="failed-subject-chip"><i class="fas fa-times"></i> ${escapeHtml(p.subject)} — Still Failed</span>`;
+                    }).join('');
+                } else {
+                    chipsHtml = s.failed_subjects.map(f => `<span class="failed-subject-chip">${escapeHtml(f)}</span>`).join('');
+                }
+
+                let currentStatusBadge = '<span class="badge badge-na">Not Checked</span>';
+                if (analysis.upcoming_checked) {
+                    currentStatusBadge = s.all_cleared
+                        ? '<span class="badge badge-cleared">ALL CLEARED</span>'
+                        : `<span class="badge badge-fail">STILL FAILED (${(s.still_failed_subjects || []).length})</span>`;
+                }
+
+                return `
+                    <tr class="clickable-row" title="Click to view full 3D marklist" onclick="openStudentExplorer('${s.prn}')">
+                        <td>${i + 1}</td>
+                        <td><strong>${s.prn}</strong></td>
+                        <td>${escapeHtml(s.name || '-')}</td>
+                        <td><div class="failed-subjects">${chipsHtml}</div></td>
+                        <td><span class="badge badge-fail">${s.failed_subjects.length}</span></td>
+                        <td>${currentStatusBadge}</td>
+                    </tr>
+                `;
+            }).join('');
+        } else {
+            failedBody.innerHTML = '<tr><td colspan="6" style="text-align:center; padding:40px; color:var(--text-secondary);">No matching failed students found</td></tr>';
+        }
+    }
+
+    function renderAllTable(students) {
+        const allBody = document.getElementById('allTableBody');
+        const analysis = currentAnalysis || {};
+        if (students && students.length > 0) {
+            allBody.innerHTML = students.map((s, i) => {
+                let statusBadge = '<span class="badge badge-pass">PASS</span>';
+                if (s.failed_subjects.length > 0) {
+                    if (analysis.upcoming_checked && s.all_cleared) {
+                        statusBadge = '<span class="badge badge-cleared">CLEARED LATER</span>';
+                    } else if (analysis.upcoming_checked) {
+                        statusBadge = `<span class="badge badge-fail">STILL FAILED (${(s.still_failed_subjects || []).length})</span>`;
+                    } else {
+                        statusBadge = '<span class="badge badge-fail">FAIL</span>';
+                    }
+                }
+                return `
+                    <tr class="clickable-row" title="Click to view full 3D marklist" onclick="openStudentExplorer('${s.prn}')">
+                        <td>${i + 1}</td>
+                        <td><strong>${s.prn}</strong></td>
+                        <td>${escapeHtml(s.name || '-')}</td>
+                        <td>${s.total_subjects}</td>
+                        <td>${s.failed_subjects.length}</td>
+                        <td>${statusBadge}</td>
+                    </tr>
+                `;
+            }).join('');
+        } else {
+            allBody.innerHTML = '<tr><td colspan="6" style="text-align:center; padding:40px; color:var(--text-secondary);">No matching students found</td></tr>';
+        }
+    }
+
+    function setFailedFilter(mode, btn) {
+        failedFilterMode = mode;
+        btn.parentElement.querySelectorAll('.filter-pill').forEach(p => p.classList.remove('active'));
+        btn.classList.add('active');
+        filterFailedTable();
+    }
+
+    function filterFailedTable() {
+        if (!currentAnalysis) return;
+        const q = (document.getElementById('failedSearchInput')?.value || '').toLowerCase().trim();
+        let list = [...(currentAnalysis.failed_students || [])];
+        if (failedFilterMode === 'still_failed' && currentAnalysis.upcoming_checked) {
+            list = list.filter(s => !s.all_cleared);
+        } else if (failedFilterMode === 'cleared' && currentAnalysis.upcoming_checked) {
+            list = list.filter(s => s.all_cleared);
+        }
+        if (q) {
+            list = list.filter(s =>
+                s.prn.toLowerCase().includes(q) ||
+                (s.name || '').toLowerCase().includes(q) ||
+                (s.failed_subjects || []).some(f => f.toLowerCase().includes(q))
+            );
+        }
+        renderFailedTable(list);
+    }
+
+    function setAllFilter(mode, btn) {
+        allFilterMode = mode;
+        btn.parentElement.querySelectorAll('.filter-pill').forEach(p => p.classList.remove('active'));
+        btn.classList.add('active');
+        filterAllTable();
+    }
+
+    function filterAllTable() {
+        if (!currentAnalysis) return;
+        const q = (document.getElementById('allSearchInput')?.value || '').toLowerCase().trim();
+        let list = [...(currentAnalysis.all_students || [])];
+        if (allFilterMode === 'pass') {
+            list = list.filter(s => s.failed_subjects.length === 0);
+        } else if (allFilterMode === 'cleared' && currentAnalysis.upcoming_checked) {
+            list = list.filter(s => s.failed_subjects.length > 0 && s.all_cleared);
+        } else if (allFilterMode === 'fail') {
+            list = list.filter(s => s.failed_subjects.length > 0 && (!currentAnalysis.upcoming_checked || !s.all_cleared));
+        }
+        if (q) {
+            list = list.filter(s => s.prn.toLowerCase().includes(q) || (s.name || '').toLowerCase().includes(q));
+        }
+        renderAllTable(list);
+    }
+
+    function sortTable(which, key) {
+        if (!currentAnalysis) return;
+        const state = sortState[which];
+        state.asc = state.key === key ? !state.asc : true;
+        state.key = key;
+        const arr = which === 'failed' ? currentAnalysis.failed_students : currentAnalysis.all_students;
+        arr.sort((a, b) => {
+            let va = key === 'count' ? a.failed_subjects.length : (a[key] || '');
+            let vb = key === 'count' ? b.failed_subjects.length : (b[key] || '');
+            if (typeof va === 'number') return state.asc ? va - vb : vb - va;
+            return state.asc ? String(va).localeCompare(String(vb)) : String(vb).localeCompare(String(va));
+        });
+        if (which === 'failed') filterFailedTable();
+        else filterAllTable();
+    }
+
+    function animateStatCounters() {
+        document.querySelectorAll('#statsGrid .stat-value').forEach(el => {
+            const target = parseInt(el.textContent, 10);
+            if (isNaN(target) || target === 0) return;
+            const duration = 550;
+            const start = performance.now();
+            function tick(now) {
+                const progress = Math.min(1, (now - start) / duration);
+                const eased = 1 - Math.pow(1 - progress, 3);
+                el.textContent = Math.round(target * eased);
+                if (progress < 1) requestAnimationFrame(tick);
+            }
+            requestAnimationFrame(tick);
+        });
+    }
+
+    function renderDonutOverview(analysis) {
+        const card = document.getElementById('donutOverviewCard');
+        const box = document.getElementById('donutOverview');
+        const total = analysis.results_found || 0;
+        if (!total) {
+            card.style.display = 'none';
+            return;
+        }
+        card.style.display = 'block';
+
+        const firstPass = analysis.all_pass_students || 0;
+        const clearedLater = analysis.upcoming_checked ? (analysis.students_cleared_all || 0) : 0;
+        const stillFailed = analysis.upcoming_checked ? (analysis.students_still_failed || 0) : (analysis.students_with_failures || 0);
+        const totalPassPct = Math.round(((firstPass + clearedLater) / total) * 100);
+
+        const r = 44;
+        const c = 2 * Math.PI * r;
+        const passLen = ((firstPass) / total) * c;
+        const clearedLen = ((clearedLater) / total) * c;
+        const failLen = ((stillFailed) / total) * c;
+
+        box.innerHTML = `
+            <div class="donut-ring">
+                <svg viewBox="0 0 110 110">
+                    <circle cx="55" cy="55" r="${r}" fill="none" stroke="var(--border)" stroke-width="12"></circle>
+                    <circle cx="55" cy="55" r="${r}" fill="none" stroke="var(--success)" stroke-width="12"
+                        stroke-dasharray="${passLen} ${c}" stroke-dashoffset="0"></circle>
+                    ${clearedLater > 0 ? `<circle cx="55" cy="55" r="${r}" fill="none" stroke="var(--primary)" stroke-width="12"
+                        stroke-dasharray="${clearedLen} ${c}" stroke-dashoffset="${-passLen}"></circle>` : ''}
+                    ${stillFailed > 0 ? `<circle cx="55" cy="55" r="${r}" fill="none" stroke="var(--danger)" stroke-width="12"
+                        stroke-dasharray="${failLen} ${c}" stroke-dashoffset="${-(passLen + clearedLen)}"></circle>` : ''}
+                </svg>
+                <div class="donut-center">${totalPassPct}%<span>Pass Rate</span></div>
+            </div>
+            <div class="donut-legend">
+                <div class="legend-item"><span class="legend-dot" style="background:var(--success);"></span> First-Attempt Pass: <strong>${firstPass}</strong></div>
+                ${analysis.upcoming_checked ? `<div class="legend-item"><span class="legend-dot" style="background:var(--primary);"></span> Cleared Later: <strong>${clearedLater}</strong></div>` : ''}
+                <div class="legend-item"><span class="legend-dot" style="background:var(--danger);"></span> ${analysis.upcoming_checked ? 'Still Pending' : 'With Failures'}: <strong>${stillFailed}</strong></div>
+            </div>
+        `;
+    }
+
+    function openSubjectModal(subjectName) {
+        if (!currentAnalysis || !currentAnalysis.subject_failures) return;
+        const data = currentAnalysis.subject_failures[subjectName];
+        if (!data) return;
+
+        const modal = document.getElementById('testModal');
+        modal.querySelector('.modal-header h3').innerHTML = `<i class="fas fa-book-open"></i> ${escapeHtml(subjectName)} (${data.count} failed)`;
+
+        const rows = (data.students || []).map((st, idx) => {
+            const fullStu = (currentAnalysis.failed_students || []).find(fs => fs.prn === st.prn);
+            let badge = '<span class="badge badge-fail">Failed</span>';
+            if (currentAnalysis.upcoming_checked && fullStu && fullStu.paper_statuses) {
+                const p = fullStu.paper_statuses.find(ps => ps.subject === subjectName);
+                if (p && p.cleared) badge = `<span class="badge badge-pass">Passed in ${escapeHtml(p.cleared_in || 'Upcoming')}</span>`;
+            }
+            return `
+                <tr class="clickable-row" onclick="closeTestModal(); openStudentExplorer('${st.prn}')">
+                    <td>${idx + 1}</td>
+                    <td><strong>${st.prn}</strong></td>
+                    <td>${escapeHtml(st.name || '-')}</td>
+                    <td>${badge}</td>
+                </tr>
+            `;
+        }).join('');
+
+        document.getElementById('testModalBody').innerHTML = `
+            <p style="font-size:13px; color:var(--text-secondary); margin-bottom:12px;">Click any student to open their full 3D marklist.</p>
+            <div class="table-container">
+                <table class="data-table">
+                    <thead><tr><th>#</th><th>PRN</th><th>Name</th><th>Status</th></tr></thead>
+                    <tbody>${rows}</tbody>
+                </table>
+            </div>
+        `;
+        modal.classList.add('active');
+    }
+
+    function toggleTheme() {
+        const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
+        const next = isDark ? 'light' : 'dark';
+        document.documentElement.setAttribute('data-theme', next);
+        localStorage.setItem('mgu_theme', next);
+        const icon = document.querySelector('#themeToggleBtn i');
+        if (icon) icon.className = next === 'dark' ? 'fas fa-sun' : 'fas fa-moon';
+    }
+
+    function launchConfetti() {
+        const canvas = document.getElementById('confettiCanvas');
+        if (!canvas || window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+        const ctx = canvas.getContext('2d');
+        canvas.width = window.innerWidth;
+        canvas.height = window.innerHeight;
+        const colors = ['#1a73e8', '#28a745', '#ffc107', '#7c4dff', '#ff5252'];
+        const particles = Array.from({ length: 70 }, () => ({
+            x: Math.random() * canvas.width,
+            y: -10 - Math.random() * 120,
+            vx: (Math.random() - 0.5) * 4,
+            vy: 3 + Math.random() * 4,
+            size: 5 + Math.random() * 5,
+            color: colors[Math.floor(Math.random() * colors.length)],
+            rot: Math.random() * Math.PI * 2
+        }));
+        let frame = 0;
+        function draw() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            particles.forEach(p => {
+                p.x += p.vx;
+                p.y += p.vy;
+                p.rot += 0.08;
+                ctx.save();
+                ctx.translate(p.x, p.y);
+                ctx.rotate(p.rot);
+                ctx.fillStyle = p.color;
+                ctx.fillRect(-p.size / 2, -p.size / 2, p.size, p.size * 0.6);
+                ctx.restore();
+            });
+            frame++;
+            if (frame < 110) requestAnimationFrame(draw);
+            else ctx.clearRect(0, 0, canvas.width, canvas.height);
+        }
+        requestAnimationFrame(draw);
+    }
+
+    function escapeAttr(str) {
+        return String(str).replace(/\\/g, '\\\\').replace(/'/g, "\\'");
+    }
+
+    function exportCSV(failedOnly = false) {
         if (!currentAnalysis) return showToast('No results to export');
 
+        const sourceList = failedOnly ? (currentAnalysis.failed_students || []) : (currentAnalysis.all_students || []);
         const hasUpcoming = Boolean(currentAnalysis.upcoming_checked);
         let csv = hasUpcoming
             ? 'PRN,Name,Total Subjects,Initial Failed Count,Initial Failed Subjects,Cleared Later,Still Failed,Current Status\n'
             : 'PRN,Name,Total Subjects,Failed Subjects Count,Failed Subjects,Status\n';
 
-        currentAnalysis.all_students.forEach(s => {
+        sourceList.forEach(s => {
             const failedSubjs = (s.failed_subjects || []).join('; ');
             if (hasUpcoming) {
                 const cleared = (s.paper_statuses || []).filter(p => p.cleared).map(p => `${p.subject} (${p.cleared_in || 'Upcoming'})`).join('; ');
@@ -1767,7 +2305,7 @@
         const url = URL.createObjectURL(blob);
         const a = document.createElement('a');
         a.href = url;
-        a.download = `mgu_result_analysis_${new Date().toISOString().slice(0,10)}.csv`;
+        a.download = `mgu_result_${failedOnly ? 'failed_' : ''}analysis_${new Date().toISOString().slice(0,10)}.csv`;
         a.click();
         URL.revokeObjectURL(url);
         showToast('CSV exported successfully!');
@@ -1785,8 +2323,24 @@
     }
 
     function escapeHtml(str) {
-        return str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+        return String(str).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
     }
+
+    // Restore theme and last PRN range on load
+    window.addEventListener('DOMContentLoaded', () => {
+        try {
+            const savedTheme = localStorage.getItem('mgu_theme');
+            if (savedTheme === 'dark') {
+                document.documentElement.setAttribute('data-theme', 'dark');
+                const icon = document.querySelector('#themeToggleBtn i');
+                if (icon) icon.className = 'fas fa-sun';
+            }
+            const sPrn = localStorage.getItem('mgu_prn_start');
+            const ePrn = localStorage.getItem('mgu_prn_end');
+            if (sPrn) document.getElementById('prnStart').value = sPrn;
+            if (ePrn) document.getElementById('prnEnd').value = ePrn;
+        } catch (e) {}
+    });
 
     // Close modal on overlay click
     document.getElementById('testModal').addEventListener('click', function(e) {
